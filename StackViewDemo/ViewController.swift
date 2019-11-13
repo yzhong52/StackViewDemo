@@ -1,5 +1,12 @@
 import UIKit
 
+private let scaleFactor: CGFloat = 1.0
+private let cellItemWidth: CGFloat = 350 * scaleFactor
+private let cellItemHeight: CGFloat = 200 * scaleFactor
+private let outpubFolder = "/Users/yuchen/Desktop/StackViewOutputs"
+private let stackViewBackgroundColor: UIColor = #colorLiteral(red: 0.921431005, green: 0.9214526415, blue: 0.9214410186, alpha: 1)
+private let shouldSnapshot: Bool = false
+
 extension UIView {
     func addPinedSubview(_ otherView: UIView) {
         addSubview(otherView)
@@ -43,6 +50,7 @@ extension UIColor {
         return UIColor()
     }
 }
+
 class DashedBorderView: UIView {
     var borderColor: UIColor = .black
 
@@ -247,15 +255,6 @@ extension UIStackView {
     }
 }
 
-
-private let scaleFactor: CGFloat = 2.0
-private let cellItemWidth: CGFloat = 350 * scaleFactor
-private let cellItemHeight: CGFloat = 200 * scaleFactor
-private let outpubFolder = "/Users/yuchen/Desktop/StackViewOutputs"
-// private let stackViewBackgroundColor: UIColor = #colorLiteral(red: 0.921431005, green: 0.9214526415, blue: 0.9214410186, alpha: 1)
-private let stackViewBackgroundColor: UIColor = .white
-
-
 class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICollectionViewDelegate, UICollectionViewDataSource {
 
     private lazy var collectionViewLayout: UICollectionViewFlowLayout = {
@@ -318,10 +317,12 @@ class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICo
         collectionViewLayout.itemSize = CGSize(width: cellItemWidth, height: cellItemHeight)
         collectionView.register(CollectionViewCell.self, forCellWithReuseIdentifier: CollectionViewCell.reuseIdentifier)
 
-        do {
-            try FileManager.default.createDirectory(atPath: outpubFolder, withIntermediateDirectories: true, attributes: nil)
-        } catch {
-            print("Unable to create outpubFolder \(error)")
+        if shouldSnapshot {
+            do {
+                try FileManager.default.createDirectory(atPath: outpubFolder, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print("Unable to create outpubFolder \(error)")
+            }
         }
     }
 
@@ -339,7 +340,7 @@ class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICo
         cell.stackView.distribution = distributions[indexPath.row]
         cell.title.text = cell.stackView.settingsDesc
 
-        if !self.snapshots.contains(indexPath) {
+        if shouldSnapshot, !self.snapshots.contains(indexPath) {
             DispatchQueue.main.asyncAfter(deadline: .now()) {
                 let data = cell.stackView.takeSnapshot()?.jpegData(compressionQuality: 1.0)
                 let path = "\(outpubFolder)/\(cell.stackView.settingsDesc).jpg"
