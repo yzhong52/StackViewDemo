@@ -8,6 +8,4 @@ This is a demo app for [UIStackView: distribution vs alignment 📚](https://med
 * While running the application, it will capture snapshots of the stack view and save them on the my Desktop :P if `shouldSnapshot` is set to `true`.
 * For simplicity, everything is under one file `ViewController.swift`.
 
-<center/>
-<img src="screenshot.png" width=300>
-</center>
+![](screenshot.jpg)

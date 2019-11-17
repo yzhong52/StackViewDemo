@@ -104,18 +104,21 @@ class DummyBoxView: DashedBorderView {
 }
 
 class CollectionViewCell: UICollectionViewCell {
-    private let padding: CGFloat = 32
+    private let padding: CGFloat = 10
 
     lazy var stackView: UIStackView = {
         let stackView = StackView()
         self.addSubview(stackView)
         stackView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            stackView.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -self.padding),
-            stackView.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: self.padding),
-            stackView.topAnchor.constraint(equalTo: self.topAnchor, constant: self.padding * 1.5 + 20),
-            stackView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -self.padding),
+            stackView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            stackView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            stackView.topAnchor.constraint(equalTo: self.titleLabel.bottomAnchor, constant: padding),
+            stackView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
         ])
+
+        // This way, the titleLabel get `hugged` before the stack view below
+        titleLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         stackView.backgroundView.backgroundColor = stackViewBackgroundColor
 
@@ -126,17 +129,18 @@ class CollectionViewCell: UICollectionViewCell {
         return stackView
     }()
 
-    lazy var title: UILabel = {
-        let title = UILabel()
-        self.addSubview(title)
-        title.translatesAutoresizingMaskIntoConstraints = false
+    lazy var titleLabel: UILabel = {
+        let lable = UILabel()
+        self.addSubview(lable)
+        lable.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            title.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: self.padding),
-            title.topAnchor.constraint(equalTo: self.topAnchor, constant: self.padding),
-            title.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -self.padding),
+            lable.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: self.padding),
+            lable.topAnchor.constraint(equalTo: self.topAnchor, constant: self.padding),
+            lable.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -self.padding),
         ])
-        title.font = UIFont.systemFont(ofSize: 13)
-        return title
+        lable.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        lable.textAlignment = .center
+        return lable
     }()
 
     static var reuseIdentifier: String {
@@ -256,11 +260,12 @@ extension UIStackView {
 }
 
 class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICollectionViewDelegate, UICollectionViewDataSource {
+    private let padding: CGFloat = 16
 
     private lazy var collectionViewLayout: UICollectionViewFlowLayout = {
         let layout = UICollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = 0
-        layout.minimumLineSpacing = 0
+        layout.minimumInteritemSpacing = padding
+        layout.sectionInset = .init(top: padding, left: padding, bottom: 0, right: padding)
         return layout
     }()
 
@@ -279,21 +284,13 @@ class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICo
         return view
     }()
 
-    private let distributions = UIStackView.Distribution.allValues
-    private let alignments = UIStackView.Alignment.allValues
+    private let rowValues = UIStackView.Distribution.allValues
+    private let sectionValues = UIStackView.Alignment.allValues
     private let snapshots = Set<IndexPath>()
-
-    private lazy var sectionCount: Int = {
-        return self.distributions.count
-    }()
-
-    private lazy var rowCount: Int = {
-        return self.alignments.count
-    }()
 
     private lazy var contentSize: CGSize = {
         return CGSize(
-            width: CGFloat(sectionCount) * cellItemWidth,
+            width: CGFloat(self.rowValues.count) * cellItemWidth + CGFloat(self.rowValues.count + 1) * padding,
             height: self.view.frame.height)
     }()
 
@@ -320,6 +317,11 @@ class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICo
         if shouldSnapshot {
             do {
                 try FileManager.default.createDirectory(atPath: outpubFolder, withIntermediateDirectories: true, attributes: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now()) {
+                    let data = self.collectionView.takeSnapshot()?.jpegData(compressionQuality: 1.0)
+                    let path = "\(outpubFolder)/overview.jpg"
+                    FileManager.default.createFile(atPath: path, contents: data, attributes: nil)
+                }
             } catch {
                 print("Unable to create outpubFolder \(error)")
             }
@@ -327,18 +329,18 @@ class ViewController: UIViewController, UICollectionViewDelegateFlowLayout, UICo
     }
 
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return alignments.count
+        return sectionValues.count
     }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return distributions.count
+        return rowValues.count
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: CollectionViewCell.reuseIdentifier, for: indexPath) as! CollectionViewCell
-        cell.stackView.alignment = alignments[indexPath.section]
-        cell.stackView.distribution = distributions[indexPath.row]
-        cell.title.text = cell.stackView.settingsDesc
+        cell.stackView.alignment = sectionValues[indexPath.section]
+        cell.stackView.distribution = rowValues[indexPath.row]
+        cell.titleLabel.text = cell.stackView.settingsDesc
 
         if shouldSnapshot, !self.snapshots.contains(indexPath) {
             DispatchQueue.main.asyncAfter(deadline: .now()) {
